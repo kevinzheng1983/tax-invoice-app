@@ -12,6 +12,7 @@ const customerSchema = z.object({
   email: z.string().trim().max(200).refine((value) => !value || /^\S+@\S+\.\S+$/.test(value), "Enter a valid email address."),
   phone: z.string().trim().max(50),
   address: z.string().trim().max(300),
+  insuranceCompany: z.enum(["", "Medibank", "Bupa", "HCF", "ARHG"]),
 });
 
 function parseCustomer(formData: FormData) {
@@ -20,6 +21,7 @@ function parseCustomer(formData: FormData) {
     email: formData.get("email"),
     phone: formData.get("phone"),
     address: formData.get("address"),
+    insuranceCompany: formData.get("insuranceCompany"),
   });
 }
 
@@ -29,6 +31,7 @@ function customerValues(data: z.infer<typeof customerSchema>) {
     email: data.email || null,
     phone: data.phone || null,
     address: data.address || null,
+    insurance_company: data.insuranceCompany || null,
   };
 }
 
@@ -64,4 +67,3 @@ export async function deleteCustomer(id: string) {
   refreshCustomers();
   redirect("/customers");
 }
-

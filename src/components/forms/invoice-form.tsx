@@ -10,9 +10,10 @@ import { formatCurrency } from "@/lib/format";
 
 const initialState: InvoiceActionState = {};
 
-export function InvoiceForm({ customers, invoice, defaultNumber, defaultDate }: { customers: CustomerDTO[]; invoice?: InvoiceDTO; defaultNumber: string; defaultDate: string }) {
+export function InvoiceForm({ customers, invoice, defaultNumber, defaultDate, mode }: { customers: CustomerDTO[]; invoice?: InvoiceDTO; defaultNumber: string; defaultDate: string; mode?: "create" | "edit" }) {
   const router = useRouter();
-  const action = invoice ? updateInvoice.bind(null, invoice.id) : createInvoice;
+  const isEdit = mode ? mode === "edit" : Boolean(invoice);
+  const action = isEdit && invoice ? updateInvoice.bind(null, invoice.id) : createInvoice;
   const [state, formAction, pending] = useActionState(action, initialState);
   const [amount, setAmount] = useState(String(invoice?.amount ?? ""));
 
@@ -26,13 +27,13 @@ export function InvoiceForm({ customers, invoice, defaultNumber, defaultDate }: 
 
   return <form className="invoice-form" action={formAction}>
     <h2>Invoice details</h2>
-    <label><span>Invoice number</span><input name="number" defaultValue={invoice?.number ?? defaultNumber} required /></label>
-    <label className="date-field"><span>Invoice date</span><input aria-label="Invoice date" name="date" required type="date" defaultValue={invoice?.date ?? defaultDate} /><Icon name="calendar" /></label>
+    <label><span>Invoice number</span><input name="number" defaultValue={isEdit && invoice ? invoice.number : defaultNumber} required /></label>
+    <label className="date-field"><span>Invoice date</span><input aria-label="Invoice date" name="date" required type="date" defaultValue={isEdit && invoice ? invoice.date : defaultDate} /><Icon name="calendar" /></label>
     <label><span>Customer</span><select name="customerId" required defaultValue={invoice?.customerId ?? ""}><option value="" disabled>Select customer</option>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.name}</option>)}</select></label>
     <label><span>Description</span><input name="description" required defaultValue={invoice?.description ?? ""} /></label>
     <label><span>Amount</span><div className="money-input"><span>$</span><input name="amount" inputMode="decimal" min="0" required type="number" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} /></div></label>
     <div className="total-card"><span>Total</span><strong>{formatCurrency(Number(amount) || 0)}</strong></div>
     {state.error && <p className="form-error" role="alert">{state.error}</p>}
-    <button className="primary-button sticky-action" disabled={pending} type="submit">{pending ? "Saving..." : invoice ? "Save & preview" : "Create & preview"}</button>
+    <button className="primary-button sticky-action" disabled={pending} type="submit">{pending ? "Saving..." : isEdit ? "Save & preview" : "Create & preview"}</button>
   </form>;
 }

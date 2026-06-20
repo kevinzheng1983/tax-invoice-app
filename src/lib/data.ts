@@ -2,6 +2,7 @@ import "server-only";
 
 import { connection } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { defaultProviderSettings, type InsuranceCompany, type ProviderSettings } from "@/lib/provider";
 
 export type CustomerDTO = {
   id: string;
@@ -9,6 +10,7 @@ export type CustomerDTO = {
   email: string | null;
   phone: string | null;
   address: string | null;
+  insuranceCompany: InsuranceCompany | null;
 };
 
 export type InvoiceDTO = {
@@ -19,6 +21,7 @@ export type InvoiceDTO = {
   customerId: string;
   description: string;
   amount: number;
+  insuranceCompany: InsuranceCompany | null;
 };
 
 type InvoiceRow = {
@@ -28,7 +31,7 @@ type InvoiceRow = {
   item_description: string;
   amount: number;
   customer_id: string;
-  customers: { name: string } | null;
+  customers: { name: string; insurance_company: string | null } | null;
 };
 
 function invoiceDTO(row: InvoiceRow): InvoiceDTO {
@@ -40,6 +43,7 @@ function invoiceDTO(row: InvoiceRow): InvoiceDTO {
     customerId: row.customer_id,
     description: row.item_description,
     amount: Number(row.amount),
+    insuranceCompany: row.customers?.insurance_company as InsuranceCompany | null,
   };
 }
 
@@ -52,28 +56,42 @@ export async function getCustomers(): Promise<CustomerDTO[]> {
   await connection();
   const { data, error } = await createAdminClient()
     .from("customers")
-    .select("id,name,email,phone,address")
+    .select("id,name,email,phone,address,insurance_company")
     .order("name");
   if (error) dataError("Could not load customers.", error);
-  return data ?? [];
+  return (data ?? []).map((customer) => ({
+    id: customer.id,
+    name: customer.name,
+    email: customer.email,
+    phone: customer.phone,
+    address: customer.address,
+    insuranceCompany: customer.insurance_company as InsuranceCompany | null,
+  }));
 }
 
 export async function getCustomer(id: string): Promise<CustomerDTO | null> {
   await connection();
   const { data, error } = await createAdminClient()
     .from("customers")
-    .select("id,name,email,phone,address")
+    .select("id,name,email,phone,address,insurance_company")
     .eq("id", id)
     .maybeSingle();
   if (error) dataError("Could not load this customer.", error);
-  return data;
+  return data ? {
+    id: data.id,
+    name: data.name,
+    email: data.email,
+    phone: data.phone,
+    address: data.address,
+    insuranceCompany: data.insurance_company as InsuranceCompany | null,
+  } : null;
 }
 
 export async function getInvoices(limit?: number): Promise<InvoiceDTO[]> {
   await connection();
   let query = createAdminClient()
     .from("invoices")
-    .select("id,invoice_number,invoice_date,item_description,amount,customer_id,customers(name)")
+    .select("id,invoice_number,invoice_date,item_description,amount,customer_id,customers(name,insurance_company)")
     .order("invoice_date", { ascending: false })
     .order("created_at", { ascending: false });
   if (limit) query = query.limit(limit);
@@ -86,7 +104,7 @@ export async function getInvoice(id: string): Promise<InvoiceDTO | null> {
   await connection();
   const { data, error } = await createAdminClient()
     .from("invoices")
-    .select("id,invoice_number,invoice_date,item_description,amount,customer_id,customers(name)")
+    .select("id,invoice_number,invoice_date,item_description,amount,customer_id,customers(name,insurance_company)")
     .eq("id", id)
     .maybeSingle();
   if (error) dataError("Could not load this invoice.", error);
@@ -131,3 +149,20 @@ export async function getNextInvoiceNumber() {
   return `INV-${String(highest + 1).padStart(4, "0")}`;
 }
 
+export async function getProviderSettings(): Promise<ProviderSettings> {
+  await connection();
+  const { data, error } = await createAdminClient()
+    .from("business_settings")
+    .select("default_provider_number,medibank_provider_number,bupa_provider_number,hcf_provider_number,arhg_provider_number")
+    .eq("id", true)
+    .maybeSingle();
+  if (error) dataError("Could not load provider settings.", error);
+  if (!data) return defaultProviderSettings;
+  return {
+    defaultProviderNumber: data.default_provider_number,
+    medibankProviderNumber: data.medibank_provider_number,
+    bupaProviderNumber: data.bupa_provider_number,
+    hcfProviderNumber: data.hcf_provider_number,
+    arhgProviderNumber: data.arhg_provider_number,
+  };
+}

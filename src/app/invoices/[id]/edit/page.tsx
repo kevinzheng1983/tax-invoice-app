@@ -7,5 +7,5 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   const { id } = await params;
   const [invoice, customers] = await Promise.all([getInvoice(id), getCustomers()]);
   if (!invoice) notFound();
-  return <AppShell className="form-page"><TopBar title="Edit invoice" back={`/invoices/preview?id=${id}`}/><InvoiceForm invoice={invoice} customers={customers} defaultNumber={invoice.number} defaultDate={invoice.date}/></AppShell>;
+  return <AppShell className="form-page"><TopBar title="Edit invoice" back={`/invoices/preview?id=${id}`}/><InvoiceForm mode="edit" invoice={invoice} customers={customers} defaultNumber={invoice.number} defaultDate={invoice.date}/></AppShell>;
 }

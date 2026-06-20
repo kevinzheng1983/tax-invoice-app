@@ -30,7 +30,7 @@ function text(font: "F1" | "F2" | "F3", size: number, x: number, y: number, valu
   return `BT /${font} ${size} Tf ${color} rg 1 0 0 1 ${x} ${y} Tm (${pdfText(value)}) Tj ET`;
 }
 
-function buildReceiptPdf(data: { number: string; date: string; customer: string; description: string; amount: number }) {
+function buildReceiptPdf(data: { number: string; date: string; customer: string; description: string; amount: number; providerLabel: string; providerNumber: string }) {
   const amount = formatAmount(data.amount);
   const commands = [
     "0.03 0.47 0.28 RG 2.5 w 44 790 m 551 790 l S",
@@ -40,8 +40,7 @@ function buildReceiptPdf(data: { number: string; date: string; customer: string;
     text("F1", 9.5, 44, 702, "Address: 86 Andaman St, Jamboree Heights, QLD, 4074"),
     text("F1", 9.5, 44, 686, "Email: zhaoyangshi@gmail.com"),
     text("F1", 9.5, 44, 670, "Tel No. 0410174441"),
-    text("F1", 9.5, 44, 654, "Provider Number: AAMT40649"),
-    text("F1", 9.5, 44, 638, "Medibank Provider Number: 0843394W"),
+    text("F1", 9.5, 44, 654, `${data.providerLabel}: ${data.providerNumber}`),
     text("F2", 10.5, 44, 565, "Bill To"),
     text("F1", 10.5, 44, 543, data.customer),
     text("F2", 10.5, 362, 565, "Receipt #"),
@@ -98,6 +97,8 @@ export async function GET(request: Request) {
     customer: params.get("customer")?.slice(0, 80) || "Customer",
     description: params.get("description")?.slice(0, 120) || "Service",
     amount: Number.isFinite(rawAmount) && rawAmount >= 0 ? rawAmount : 0,
+    providerLabel: params.get("providerLabel")?.slice(0, 40) || "Provider Number",
+    providerNumber: params.get("providerNumber")?.slice(0, 50) || "AAMT40649",
   };
   const filename = data.number.replace(/[^a-zA-Z0-9_-]/g, "-") || "receipt";
   const pdf = buildReceiptPdf(data);

@@ -29,12 +29,46 @@ export type Database = {
   };
   public: {
     Tables: {
+      business_settings: {
+        Row: {
+          arhg_provider_number: string;
+          bupa_provider_number: string;
+          created_at: string;
+          default_provider_number: string;
+          hcf_provider_number: string;
+          id: boolean;
+          medibank_provider_number: string;
+          updated_at: string;
+        };
+        Insert: {
+          arhg_provider_number?: string;
+          bupa_provider_number?: string;
+          created_at?: string;
+          default_provider_number?: string;
+          hcf_provider_number?: string;
+          id?: boolean;
+          medibank_provider_number?: string;
+          updated_at?: string;
+        };
+        Update: {
+          arhg_provider_number?: string;
+          bupa_provider_number?: string;
+          created_at?: string;
+          default_provider_number?: string;
+          hcf_provider_number?: string;
+          id?: boolean;
+          medibank_provider_number?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       customers: {
         Row: {
           address: string | null;
           created_at: string;
           email: string | null;
           id: string;
+          insurance_company: string | null;
           name: string;
           phone: string | null;
           updated_at: string;
@@ -44,6 +78,7 @@ export type Database = {
           created_at?: string;
           email?: string | null;
           id?: string;
+          insurance_company?: string | null;
           name: string;
           phone?: string | null;
           updated_at?: string;
@@ -53,6 +88,7 @@ export type Database = {
           created_at?: string;
           email?: string | null;
           id?: string;
+          insurance_company?: string | null;
           name?: string;
           phone?: string | null;
           updated_at?: string;

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -72,3 +73,9 @@ export async function updateInvoice(id: string, _state: InvoiceActionState, form
   return { invoiceId: id };
 }
 
+export async function deleteInvoice(id: string) {
+  const { error } = await createAdminClient().from("invoices").delete().eq("id", id);
+  if (error) redirect(`/invoices/preview?id=${id}&error=delete`);
+  refreshInvoices(id);
+  redirect("/invoices");
+}
