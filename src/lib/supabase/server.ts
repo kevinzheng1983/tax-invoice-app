@@ -1,27 +1,32 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import "server-only";
 
-export async function createClient() {
-  const cookieStore = await cookies();
+import { createClient } from "@supabase/supabase-js";
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+import type { Database } from "./database.types";
+
+function getRequiredEnv(name: "NEXT_PUBLIC_SUPABASE_URL" | "SUPABASE_SERVICE_ROLE_KEY") {
+  const value = process.env[name];
+
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+
+  return value;
+}
+
+/**
+ * Creates a privileged Supabase client for the server-side data access layer.
+ * Never import this module from a Client Component.
+ */
+export function createAdminClient() {
+  return createClient<Database>(
+    getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
+    getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
     {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
-          } catch {
-            // Server Components cannot write cookies. Session refresh will be
-            // handled by a request boundary when authentication is added.
-          }
-        },
+      auth: {
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        persistSession: false,
       },
     },
   );
