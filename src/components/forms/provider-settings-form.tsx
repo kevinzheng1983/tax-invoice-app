@@ -15,9 +15,9 @@ export function ProviderSettingsForm({ settings }: { settings: ProviderSettings 
     <label><span>Bupa Provider Number</span><input name="bupaProviderNumber" defaultValue={settings.bupaProviderNumber} required /></label>
     <label><span>HCF Provider Number</span><input name="hcfProviderNumber" defaultValue={settings.hcfProviderNumber} required /></label>
     <label><span>ARHG Provider Number</span><input name="arhgProviderNumber" defaultValue={settings.arhgProviderNumber} required /></label>
+    <label><span>AHM Provider Number</span><input name="ahmProviderNumber" defaultValue={settings.ahmProviderNumber} required /></label>
     {state.error && <p className="form-error" role="alert">{state.error}</p>}
     {state.saved && <p className="form-success" role="status">Provider numbers updated.</p>}
     <button className="primary-button" disabled={pending} type="submit">{pending ? "Saving..." : "Save provider numbers"}</button>
   </form>;
 }
-

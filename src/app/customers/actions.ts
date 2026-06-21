@@ -12,7 +12,7 @@ const customerSchema = z.object({
   email: z.string().trim().max(200).refine((value) => !value || /^\S+@\S+\.\S+$/.test(value), "Enter a valid email address."),
   phone: z.string().trim().max(50),
   address: z.string().trim().max(300),
-  insuranceCompany: z.enum(["", "Medibank", "Bupa", "HCF", "ARHG"]),
+  insuranceCompany: z.enum(["", "Medibank", "Bupa", "HCF", "ARHG", "AHM"]),
 });
 
 function parseCustomer(formData: FormData) {

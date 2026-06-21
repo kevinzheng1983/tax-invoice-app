@@ -153,7 +153,7 @@ export async function getProviderSettings(): Promise<ProviderSettings> {
   await connection();
   const { data, error } = await createAdminClient()
     .from("business_settings")
-    .select("default_provider_number,medibank_provider_number,bupa_provider_number,hcf_provider_number,arhg_provider_number")
+    .select("default_provider_number,medibank_provider_number,bupa_provider_number,hcf_provider_number,arhg_provider_number,ahm_provider_number")
     .eq("id", true)
     .maybeSingle();
   if (error) dataError("Could not load provider settings.", error);
@@ -164,5 +164,6 @@ export async function getProviderSettings(): Promise<ProviderSettings> {
     bupaProviderNumber: data.bupa_provider_number,
     hcfProviderNumber: data.hcf_provider_number,
     arhgProviderNumber: data.arhg_provider_number,
+    ahmProviderNumber: data.ahm_provider_number,
   };
 }

@@ -31,6 +31,7 @@ export type Database = {
     Tables: {
       business_settings: {
         Row: {
+          ahm_provider_number: string;
           arhg_provider_number: string;
           bupa_provider_number: string;
           created_at: string;
@@ -41,6 +42,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          ahm_provider_number?: string;
           arhg_provider_number?: string;
           bupa_provider_number?: string;
           created_at?: string;
@@ -51,6 +53,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          ahm_provider_number?: string;
           arhg_provider_number?: string;
           bupa_provider_number?: string;
           created_at?: string;

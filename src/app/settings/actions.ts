@@ -12,6 +12,7 @@ const providerSettingsSchema = z.object({
   bupaProviderNumber: z.string().trim().min(1, "Bupa Provider Number is required.").max(50),
   hcfProviderNumber: z.string().trim().min(1, "HCF Provider Number is required.").max(50),
   arhgProviderNumber: z.string().trim().min(1, "ARHG Provider Number is required.").max(50),
+  ahmProviderNumber: z.string().trim().min(1, "AHM Provider Number is required.").max(50),
 });
 
 export async function updateProviderSettings(_state: ProviderSettingsActionState, formData: FormData): Promise<ProviderSettingsActionState> {
@@ -21,6 +22,7 @@ export async function updateProviderSettings(_state: ProviderSettingsActionState
     bupaProviderNumber: formData.get("bupaProviderNumber"),
     hcfProviderNumber: formData.get("hcfProviderNumber"),
     arhgProviderNumber: formData.get("arhgProviderNumber"),
+    ahmProviderNumber: formData.get("ahmProviderNumber"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the provider numbers." };
 
@@ -31,10 +33,10 @@ export async function updateProviderSettings(_state: ProviderSettingsActionState
     bupa_provider_number: parsed.data.bupaProviderNumber,
     hcf_provider_number: parsed.data.hcfProviderNumber,
     arhg_provider_number: parsed.data.arhgProviderNumber,
+    ahm_provider_number: parsed.data.ahmProviderNumber,
   });
   if (error) return { error: "Could not update provider numbers. Please try again." };
   revalidatePath("/settings");
   revalidatePath("/invoices/preview/print");
   return { saved: true };
 }
-
