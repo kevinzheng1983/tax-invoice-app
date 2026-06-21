@@ -53,7 +53,7 @@ function buildReceiptPdf(data: { number: string; date: string; customer: string;
     text("F2", 20, 44, 754, "Zhaoyang Shi", "0.03 0.47 0.28"),
     text("F2", 20, 462, 754, "RECEIPT", "0.03 0.47 0.28"),
     text("F1", 9.5, 44, 718, "ABN: 86 164 178 873"),
-    text("F1", 9.5, 44, 702, "Address: 86 Andaman St, Jamboree Heights, QLD, 4074"),
+    text("F1", 9.5, 44, 702, "Address: 25 Manchester Tce, Taringa, QLD, 4068"),
     text("F1", 9.5, 44, 686, "Email: zhaoyangshi@gmail.com"),
     text("F1", 9.5, 44, 670, "Tel No. 0410174441"),
     text("F1", 9.5, 44, 654, `${data.providerLabel}: ${data.providerNumber}`),
