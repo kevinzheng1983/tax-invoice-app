@@ -30,7 +30,7 @@ export function InvoiceForm({ customers, invoice, defaultNumber, defaultDate, de
     <label><span>Invoice number</span><input name="number" defaultValue={isEdit && invoice ? invoice.number : defaultNumber} required /></label>
     <label className="date-field"><span>Invoice date</span><input aria-label="Invoice date" name="date" required type="date" defaultValue={isEdit && invoice ? invoice.date : defaultDate} /><Icon name="calendar" /></label>
     <label><span>Customer</span><select name="customerId" required defaultValue={invoice?.customerId ?? defaultCustomerId ?? ""}><option value="" disabled>Select customer</option>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.name}</option>)}</select></label>
-    <label><span>Description</span><input name="description" required defaultValue={invoice?.description ?? ""} /></label>
+    <label><span>Description</span><input name="description" required defaultValue={invoice?.description ?? "Remedial Massage 60mins"} /></label>
     <label><span>Amount</span><div className="money-input"><span>$</span><input name="amount" inputMode="decimal" min="0" required type="number" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} /></div></label>
     <div className="total-card"><span>Total</span><strong>{formatCurrency(Number(amount) || 0)}</strong></div>
     {state.error && <p className="form-error" role="alert">{state.error}</p>}
