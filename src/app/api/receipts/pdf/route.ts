@@ -1,5 +1,21 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
+const encoder = new TextEncoder();
+const signatureImage = readFile(join(process.cwd(), "public", "signature.jpg"));
+
+function joinBytes(parts: Uint8Array[]) {
+  const length = parts.reduce((total, part) => total + part.length, 0);
+  const result = new Uint8Array(length);
+  let offset = 0;
+  for (const part of parts) {
+    result.set(part, offset);
+    offset += part.length;
+  }
+  return result;
+}
 
 function pdfText(value: string) {
   return value
@@ -30,7 +46,7 @@ function text(font: "F1" | "F2" | "F3", size: number, x: number, y: number, valu
   return `BT /${font} ${size} Tf ${color} rg 1 0 0 1 ${x} ${y} Tm (${pdfText(value)}) Tj ET`;
 }
 
-function buildReceiptPdf(data: { number: string; date: string; customer: string; description: string; amount: number; providerLabel: string; providerNumber: string }) {
+function buildReceiptPdf(data: { number: string; date: string; customer: string; description: string; amount: number; providerLabel: string; providerNumber: string }, signature: Uint8Array) {
   const amount = formatAmount(data.amount);
   const commands = [
     "0.03 0.47 0.28 RG 2.5 w 44 790 m 551 790 l S",
@@ -57,7 +73,7 @@ function buildReceiptPdf(data: { number: string; date: string; customer: string;
     text("F1", 10.5, 480, 468, amount),
     text("F2", 14, 356, 420, "TOTAL"),
     text("F2", 15, 476, 420, amount, "0.03 0.47 0.28"),
-    text("F3", 25, 405, 365, "Zhaoyang Shi", "0.16 0.20 0.18"),
+    "q 200 0 0 122 352 294 cm /Signature Do Q",
     text("F2", 10.5, 44, 150, "Payment Details"),
     text("F1", 9.5, 44, 119, "BSB: 064178"),
     text("F1", 9.5, 44, 102, "Account number: 10389373"),
@@ -65,27 +81,42 @@ function buildReceiptPdf(data: { number: string; date: string; customer: string;
     "0.03 0.47 0.28 RG 2.5 w 44 52 m 551 52 l S",
   ].join("\n");
 
-  const objects = [
+  const imageObject = joinBytes([
+    encoder.encode(`<< /Type /XObject /Subtype /Image /Width 448 /Height 274 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${signature.length} >>\nstream\n`),
+    signature,
+    encoder.encode("\nendstream"),
+  ]);
+  const objects: Array<string | Uint8Array> = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /Font << /F1 4 0 R /F2 5 0 R /F3 6 0 R >> >> /Contents 7 0 R >>`,
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /Font << /F1 4 0 R /F2 5 0 R /F3 6 0 R >> /XObject << /Signature 7 0 R >> >> /Contents 8 0 R >>`,
     "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
     "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
     "<< /Type /Font /Subtype /Type1 /BaseFont /Times-Italic >>",
+    imageObject,
     `<< /Length ${commands.length} >>\nstream\n${commands}\nendstream`,
   ];
 
-  let pdf = "%PDF-1.4\n%PDFGEN\n";
+  const parts: Uint8Array[] = [];
+  let pdfLength = 0;
+  const append = (value: string | Uint8Array) => {
+    const bytes = typeof value === "string" ? encoder.encode(value) : value;
+    parts.push(bytes);
+    pdfLength += bytes.length;
+  };
+  append("%PDF-1.4\n%PDFGEN\n");
   const offsets = [0];
   objects.forEach((object, index) => {
-    offsets.push(pdf.length);
-    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+    offsets.push(pdfLength);
+    append(`${index + 1} 0 obj\n`);
+    append(object);
+    append("\nendobj\n");
   });
-  const xrefOffset = pdf.length;
-  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  pdf += offsets.slice(1).map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("");
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-  return new TextEncoder().encode(pdf);
+  const xrefOffset = pdfLength;
+  append(`xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`);
+  append(offsets.slice(1).map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join(""));
+  append(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+  return joinBytes(parts);
 }
 
 export async function GET(request: Request) {
@@ -101,7 +132,7 @@ export async function GET(request: Request) {
     providerNumber: params.get("providerNumber")?.slice(0, 50) || "AAMT40649",
   };
   const filename = data.number.replace(/[^a-zA-Z0-9_-]/g, "-") || "receipt";
-  const pdf = buildReceiptPdf(data);
+  const pdf = buildReceiptPdf(data, new Uint8Array(await signatureImage));
 
   return new Response(pdf, {
     headers: {
