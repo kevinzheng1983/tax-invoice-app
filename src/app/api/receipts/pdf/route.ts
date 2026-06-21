@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { receiptPdfFilename } from "@/lib/format";
 
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
@@ -46,7 +47,7 @@ function text(font: "F1" | "F2" | "F3", size: number, x: number, y: number, valu
   return `BT /${font} ${size} Tf ${color} rg 1 0 0 1 ${x} ${y} Tm (${pdfText(value)}) Tj ET`;
 }
 
-function buildReceiptPdf(data: { number: string; date: string; customer: string; description: string; amount: number; providerLabel: string; providerNumber: string }, signature: Uint8Array) {
+function buildReceiptPdf(data: { number: string; date: string; customer: string; description: string; amount: number; defaultProviderNumber: string; providerLabel: string; providerNumber: string }, signature: Uint8Array) {
   const amount = formatAmount(data.amount);
   const commands = [
     "0.03 0.47 0.28 RG 2.5 w 44 790 m 551 790 l S",
@@ -56,7 +57,8 @@ function buildReceiptPdf(data: { number: string; date: string; customer: string;
     text("F1", 9.5, 44, 702, "Address: 25 Manchester Tce, Taringa, QLD, 4068"),
     text("F1", 9.5, 44, 686, "Email: zhaoyangshi@gmail.com"),
     text("F1", 9.5, 44, 670, "Tel No. 0410174441"),
-    text("F1", 9.5, 44, 654, `${data.providerLabel}: ${data.providerNumber}`),
+    text("F1", 9.5, 44, 654, `Provider Number: ${data.defaultProviderNumber}`),
+    ...(data.providerLabel && data.providerNumber ? [text("F1", 9.5, 44, 638, `${data.providerLabel}: ${data.providerNumber}`)] : []),
     text("F2", 10.5, 44, 565, "Bill To"),
     text("F1", 10.5, 44, 543, data.customer),
     text("F2", 10.5, 362, 565, "Receipt #"),
@@ -128,16 +130,19 @@ export async function GET(request: Request) {
     customer: params.get("customer")?.slice(0, 80) || "Customer",
     description: params.get("description")?.slice(0, 120) || "Service",
     amount: Number.isFinite(rawAmount) && rawAmount >= 0 ? rawAmount : 0,
-    providerLabel: params.get("providerLabel")?.slice(0, 40) || "Provider Number",
-    providerNumber: params.get("providerNumber")?.slice(0, 50) || "AAMT40649",
+    defaultProviderNumber: params.get("defaultProviderNumber")?.slice(0, 50) || "AAMT40649",
+    providerLabel: params.get("providerLabel")?.slice(0, 40) || "",
+    providerNumber: params.get("providerNumber")?.slice(0, 50) || "",
   };
-  const filename = data.number.replace(/[^a-zA-Z0-9_-]/g, "-") || "receipt";
+  const filename = receiptPdfFilename(data.number, data.customer);
+  const asciiFilename = filename.normalize("NFKD").replace(/[^\x20-\x7E]/g, "").replace(/["\\]/g, "-") || "receipt.pdf";
+  const encodedFilename = encodeURIComponent(filename).replace(/['()*]/g, (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);
   const pdf = buildReceiptPdf(data, new Uint8Array(await signatureImage));
 
   return new Response(pdf, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}.pdf"`,
+      "Content-Disposition": `attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodedFilename}`,
       "Cache-Control": "no-store",
     },
   });

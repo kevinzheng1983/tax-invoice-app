@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/app-shell";
+import { receiptPdfFilename } from "@/lib/format";
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -14,9 +15,9 @@ function downloadBlob(blob: Blob, filename: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function SharePdfButton({ pdfUrl, receiptNumber }: { pdfUrl: string; receiptNumber: string }) {
+export function SharePdfButton({ pdfUrl, receiptNumber, customerName }: { pdfUrl: string; receiptNumber: string; customerName: string }) {
   const [status, setStatus] = useState<"idle" | "loading" | "fallback" | "error">("idle");
-  const filename = `${receiptNumber}.pdf`;
+  const filename = receiptPdfFilename(receiptNumber, customerName);
 
   async function sharePdf() {
     setStatus("loading");

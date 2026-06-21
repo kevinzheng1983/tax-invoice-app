@@ -19,3 +19,14 @@ export const todayInBrisbane = () =>
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+
+export function receiptPdfFilename(receiptNumber: string, customerName: string) {
+  const filename = `${receiptNumber}-${customerName}`
+    .normalize("NFKC")
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "-")
+    .replace(/\s+/g, " ")
+    .replace(/[. ]+$/g, "")
+    .trim()
+    .slice(0, 180);
+  return `${filename || "receipt"}.pdf`;
+}
