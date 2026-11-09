@@ -1,4 +1,6 @@
 import "server-only";
+import { todayInBrisbane } from "@/lib/format";
+import { monthsBefore } from "@/lib/invoice-period";
 
 import { connection } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -87,6 +89,13 @@ export async function getCustomer(id: string): Promise<CustomerDTO | null> {
   } : null;
 }
 
+export async function getCustomerCount() {
+  await connection();
+  const { count, error } = await createAdminClient().from("customers").select("id", { count: "exact", head: true });
+  if (error) dataError("Could not load the customer count.", error);
+  return count ?? 0;
+}
+
 export async function getInvoices(limit?: number): Promise<InvoiceDTO[]> {
   await connection();
   let query = createAdminClient()
@@ -114,24 +123,50 @@ export async function getInvoice(id: string): Promise<InvoiceDTO | null> {
 export async function getDashboardData() {
   await connection();
   const client = createAdminClient();
-  const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-    .toISOString()
-    .slice(0, 10);
-  const [invoicesResult, customersResult, recentInvoices] = await Promise.all([
-    client.from("invoices").select("amount").gte("invoice_date", monthStart),
-    client.from("customers").select("id", { count: "exact", head: true }),
-    getInvoices(4),
-  ]);
-  if (invoicesResult.error) dataError("Could not load the monthly summary.", invoicesResult.error);
-  if (customersResult.error) dataError("Could not load the customer count.", customersResult.error);
-  const monthlyInvoices = invoicesResult.data ?? [];
+  const today = todayInBrisbane();
+  const months = Array.from({ length: 6 }, (_, index) => ({
+    month: monthsBefore(`${today.slice(0, 7)}-01`, 5 - index).slice(0, 7),
+    amount: 0,
+  }));
+  // Read only summary fields in batches, so totals are not truncated at Supabase's row limit.
+  let allTimeCents = 0;
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await client.from("invoices").select("id,amount,invoice_date")
+      .order("id").range(offset, offset + 499);
+    if (error) dataError("Could not load invoice totals.", error);
+    for (const invoice of data ?? []) {
+      const cents = Math.round(Number(invoice.amount) * 100);
+      allTimeCents += cents;
+      const month = months.find((item) => item.month === invoice.invoice_date.slice(0, 7));
+      if (month) month.amount += cents;
+    }
+    if (!data || data.length < 500) break;
+  }
   return {
-    monthTotal: monthlyInvoices.reduce((total, item) => total + Number(item.amount), 0),
-    invoiceCount: monthlyInvoices.length,
-    customerCount: customersResult.count ?? 0,
-    recentInvoices,
+    allTimeTotal: allTimeCents / 100,
+    months: months.map((month) => ({ ...month, amount: month.amount / 100 })),
+    recentInvoices: await getInvoices(4),
   };
+}
+
+export async function getInvoicePeriod(start: string, end: string, inclusiveEnd = false) {
+  await connection();
+  const client = createAdminClient();
+  const invoices: InvoiceDTO[] = [];
+  for (let offset = 0; ; offset += 500) {
+    let query = client.from("invoices")
+      .select("id,invoice_number,invoice_date,item_description,amount,customer_id,customers(name,insurance_company)")
+      .gte("invoice_date", start);
+    query = inclusiveEnd ? query.lte("invoice_date", end) : query.lt("invoice_date", end);
+    const { data, error } = await query.order("invoice_date", { ascending: false })
+      .order("created_at", { ascending: false }).order("id").range(offset, offset + 499);
+    if (error) dataError("Could not load invoices.", error);
+    invoices.push(...((data ?? []) as InvoiceRow[]).map(invoiceDTO));
+    if (!data || data.length < 500) break;
+  }
+  const { count, error } = await client.from("invoices").select("id", { count: "exact", head: true }).lt("invoice_date", start);
+  if (error) dataError("Could not check older invoices.", error);
+  return { invoices, hasOlder: (count ?? 0) > 0 };
 }
 
 export async function getNextInvoiceNumber() {
