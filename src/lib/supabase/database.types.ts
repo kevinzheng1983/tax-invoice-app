@@ -144,7 +144,12 @@ export type Database = {
       };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      get_invoice_summary: {
+        Args: { as_of_date: string };
+        Returns: { all_time_total: number; month: string; amount: number }[];
+      };
+    };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
   };

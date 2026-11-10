@@ -1,6 +1,5 @@
 import "server-only";
 import { todayInBrisbane } from "@/lib/format";
-import { monthsBefore } from "@/lib/invoice-period";
 
 import { connection } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -124,28 +123,16 @@ export async function getDashboardData() {
   await connection();
   const client = createAdminClient();
   const today = todayInBrisbane();
-  const months = Array.from({ length: 6 }, (_, index) => ({
-    month: monthsBefore(`${today.slice(0, 7)}-01`, 5 - index).slice(0, 7),
-    amount: 0,
-  }));
-  // Read only summary fields in batches, so totals are not truncated at Supabase's row limit.
-  let allTimeCents = 0;
-  for (let offset = 0; ; offset += 500) {
-    const { data, error } = await client.from("invoices").select("id,amount,invoice_date")
-      .order("id").range(offset, offset + 499);
-    if (error) dataError("Could not load invoice totals.", error);
-    for (const invoice of data ?? []) {
-      const cents = Math.round(Number(invoice.amount) * 100);
-      allTimeCents += cents;
-      const month = months.find((item) => item.month === invoice.invoice_date.slice(0, 7));
-      if (month) month.amount += cents;
-    }
-    if (!data || data.length < 500) break;
-  }
+  const [summary, recentInvoices] = await Promise.all([
+    client.rpc("get_invoice_summary", { as_of_date: today }),
+    getInvoices(4),
+  ]);
+  if (summary.error) dataError("Could not load invoice totals.", summary.error);
+  if (!summary.data || summary.data.length !== 6) throw new Error("Incomplete invoice summary.");
   return {
-    allTimeTotal: allTimeCents / 100,
-    months: months.map((month) => ({ ...month, amount: month.amount / 100 })),
-    recentInvoices: await getInvoices(4),
+    allTimeTotal: Number(summary.data[0].all_time_total),
+    months: summary.data.map((row) => ({ month: row.month, amount: Number(row.amount) })),
+    recentInvoices,
   };
 }
 
